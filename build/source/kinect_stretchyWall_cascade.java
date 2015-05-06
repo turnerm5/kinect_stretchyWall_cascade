@@ -20,7 +20,6 @@ public class kinect_stretchyWall_cascade extends PApplet {
 
 
 
-
 //turns off the Kinect sensing, uses the mouse as input
 Boolean debugMode = true;
 
@@ -38,6 +37,9 @@ int pixelFill;
 float isMoving;
 int backColor;
 boolean gravity = false;
+
+float baseForce = 30;
+float force = baseForce;
 
 superPixel[][] pixelArray = new superPixel[xPixels][yPixels];
 
@@ -63,8 +65,12 @@ public void setup() {
 }
 
 public void draw() {
-  background(0xff4BB2BC);
+  background(0xffAAAC9A);
   
+  if (gravity){
+    force = baseForce * 3;
+  }
+
   for (int i = 0; i < xPixels; i++) {
     for (int j = 0; j < yPixels; j++) {
 
@@ -75,11 +81,13 @@ public void draw() {
 
   if (debugMode){
     PVector mouse = new PVector(mouseX, mouseY);
-  
+    
+
+
     if (mousePressed && (mouseButton == LEFT)) {
       for (int i = 0; i < xPixels; i++) {
         for (int j = 0; j < yPixels; j++) {
-          pixelArray[i][j].explode(500, mouse);
+          pixelArray[i][j].explode(force, mouse);
         }
       }
     }
@@ -119,8 +127,29 @@ public void keyPressed() {
   //if we hit space, change the gravity!
   if (key == ' ') {
     gravity = !gravity;
+    if (!gravity){
+      force = baseForce;
+    }
     println("gravity: "+gravity);
   }
+
+   
+  //make it easy to adjust our force while debugging
+  if (debugMode){
+    if (key == CODED) {
+      if (keyCode == UP) {
+        baseForce += 2;
+        force += 2;
+        println("force: "+force);
+      } 
+      else if (keyCode == DOWN) {
+        baseForce -= 2;
+        force -= 2;
+        println("force: "+force);
+      }
+    }
+  }
+
 }
 //Thanks to Daniel Shiffman!
 
@@ -217,8 +246,8 @@ class KinectTracker {
   public float getForce(){
     
     //we need to determine what the second number should be.
-    int minForce = 200;
-    int maxForce = 800;
+    int minForce = 0;
+    int maxForce = 40;
     int distancePastThreshold = 100;
 
     force = constrain(map(force, 0, distancePastThreshold, minForce, maxForce),minForce,maxForce);
@@ -339,7 +368,11 @@ class superPixel {
     } 
     else if (location.y > height - 2) {
       location.y = height - 2;
-      velocity.y *= -.9f;
+      if (gravity){
+        velocity.y *= random(-2,-4);
+      } else {
+        velocity.y *= -.9f;
+      }
     }
   }
   
@@ -366,7 +399,7 @@ class superPixel {
     //otherwise, move towards home with a random acceleration 
     else {
       seek.normalize();
-      seek.mult(random(.05f, .2f));
+      seek.mult(random(.2f, .4f));
       acceleration.add(seek);
     }
   }
@@ -383,15 +416,10 @@ class superPixel {
     //check the distance between the two
     float distance = gunpowder.mag();
     
-    //if it's far away, no need to affect it (save CPU!)
-    if (distance < 500) {
-      gunpowder.normalize();
-      float amount = -1 * force;
-      
-      // inverse square law!
-      gunpowder.mult( amount / (distance * distance));
-      acceleration.add(gunpowder);
-    }
+    gunpowder.normalize();
+
+    gunpowder.mult((-1 * force) / (distance));
+    applyForce(gunpowder);
   }
 
 
@@ -411,13 +439,13 @@ class superPixel {
   //apply some gravity, if it's turned on
   public void gravity() {
     if (gravity) {
-      applyForce(random(.2f, .5f));
+      applyForce(new PVector(0,random(.4f, .8f)));
     }
   }
   
   //pass any forces to our object's acceleration
-  public void applyForce(float force) {
-    PVector f = new PVector(0,force);
+  public void applyForce(PVector force) {
+    PVector f = force.get();
     acceleration.add(f);
   }
 

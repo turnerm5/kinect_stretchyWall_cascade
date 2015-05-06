@@ -19,6 +19,9 @@ float isMoving;
 color backColor;
 boolean gravity = false;
 
+float baseForce = 30;
+float force = baseForce;
+
 superPixel[][] pixelArray = new superPixel[xPixels][yPixels];
 
 void setup() {
@@ -43,8 +46,12 @@ void setup() {
 }
 
 void draw() {
-  background(#4BB2BC);
+  background(#AAAC9A);
   
+  if (gravity){
+    force = baseForce * 3;
+  }
+
   for (int i = 0; i < xPixels; i++) {
     for (int j = 0; j < yPixels; j++) {
 
@@ -55,11 +62,13 @@ void draw() {
 
   if (debugMode){
     PVector mouse = new PVector(mouseX, mouseY);
-  
+    
+
+
     if (mousePressed && (mouseButton == LEFT)) {
       for (int i = 0; i < xPixels; i++) {
         for (int j = 0; j < yPixels; j++) {
-          pixelArray[i][j].explode(500, mouse);
+          pixelArray[i][j].explode(force, mouse);
         }
       }
     }
@@ -99,6 +108,27 @@ void keyPressed() {
   //if we hit space, change the gravity!
   if (key == ' ') {
     gravity = !gravity;
+    if (!gravity){
+      force = baseForce;
+    }
     println("gravity: "+gravity);
   }
+
+   
+  //make it easy to adjust our force while debugging
+  if (debugMode){
+    if (key == CODED) {
+      if (keyCode == UP) {
+        baseForce += 2;
+        force += 2;
+        println("force: "+force);
+      } 
+      else if (keyCode == DOWN) {
+        baseForce -= 2;
+        force -= 2;
+        println("force: "+force);
+      }
+    }
+  }
+
 }

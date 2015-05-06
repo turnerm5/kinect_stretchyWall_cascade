@@ -93,8 +93,8 @@ class KinectTracker {
   float getForce(){
     
     //we need to determine what the second number should be.
-    int minForce = 200;
-    int maxForce = 800;
+    int minForce = 0;
+    int maxForce = 40;
     int distancePastThreshold = 100;
 
     force = constrain(map(force, 0, distancePastThreshold, minForce, maxForce),minForce,maxForce);

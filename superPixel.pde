@@ -63,7 +63,11 @@ class superPixel {
     } 
     else if (location.y > height - 2) {
       location.y = height - 2;
-      velocity.y *= -.9;
+      if (gravity){
+        velocity.y *= random(-2,-4);
+      } else {
+        velocity.y *= -.9;
+      }
     }
   }
   
@@ -90,7 +94,7 @@ class superPixel {
     //otherwise, move towards home with a random acceleration 
     else {
       seek.normalize();
-      seek.mult(random(.05, .2));
+      seek.mult(random(.2, .4));
       acceleration.add(seek);
     }
   }
@@ -107,15 +111,10 @@ class superPixel {
     //check the distance between the two
     float distance = gunpowder.mag();
     
-    //if it's far away, no need to affect it (save CPU!)
-    if (distance < 500) {
-      gunpowder.normalize();
-      float amount = -1 * force;
-      
-      // inverse square law!
-      gunpowder.mult( amount / (distance * distance));
-      acceleration.add(gunpowder);
-    }
+    gunpowder.normalize();
+
+    gunpowder.mult((-1 * force) / (distance));
+    applyForce(gunpowder);
   }
 
 
@@ -135,13 +134,13 @@ class superPixel {
   //apply some gravity, if it's turned on
   void gravity() {
     if (gravity) {
-      applyForce(random(.2, .5));
+      applyForce(new PVector(0,random(.4, .8)));
     }
   }
   
   //pass any forces to our object's acceleration
-  void applyForce(float force) {
-    PVector f = new PVector(0,force);
+  void applyForce(PVector force) {
+    PVector f = force.get();
     acceleration.add(f);
   }
 

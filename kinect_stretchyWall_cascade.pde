@@ -2,7 +2,7 @@ import org.openkinect.*;
 import org.openkinect.processing.*;
 
 //turns off the Kinect sensing, uses the mouse as input
-Boolean debugMode = true;
+Boolean debugMode = false;
 
 // Showing how we can farm all the kinect stuff out to a separate class
 KinectTracker tracker;
@@ -15,18 +15,24 @@ int yPixels = 76;
 
 float xSize, ySize, x, y;
 color pixelFill;
-float isMoving;
-color backColor;
+color backColor = #9933FF;
 boolean gravity = false;
 
-float baseForce = 30;
+float baseForce = 10;
 float force = baseForce;
 
 superPixel[][] pixelArray = new superPixel[xPixels][yPixels];
 
 void setup() {
+  //a little small, so we don't get artifacts
   size(1000, 760);
   noStroke();
+
+  //if we're not in debug mode, initialize the Kinect
+  if (!debugMode){
+    kinect = new Kinect(this);
+    tracker = new KinectTracker();
+  }
 
   //code this
   //initialize each superPixel, with a nice blueish color
@@ -46,45 +52,48 @@ void setup() {
 }
 
 void draw() {
-  background(#AAAC9A);
   
-  if (gravity){
-    force = baseForce * 3;
-  }
+  background(backColor);
+  
 
+  
   for (int i = 0; i < xPixels; i++) {
     for (int j = 0; j < yPixels; j++) {
-
       pixelArray[i][j].run();
-
     }
   }
-
+  
   if (debugMode){
     PVector mouse = new PVector(mouseX, mouseY);
-    
-
-
     if (mousePressed && (mouseButton == LEFT)) {
       for (int i = 0; i < xPixels; i++) {
         for (int j = 0; j < yPixels; j++) {
           pixelArray[i][j].explode(force, mouse);
         }
-      }
+      } 
     }
   }
 
   if(!debugMode){
     tracker.track();
-    float force = tracker.getForce();
-    PVector position = tracker.getPos();
-
-    for (int i = 0; i < xPixels; i++) {
-      for (int j = 0; j < yPixels; j++) {
-        pixelArray[i][j].explode(force, position);
+    if (tracker.tracking()){
+      float force = tracker.getForce();
+      
+        if (gravity){
+          force = baseForce * 5;
+        }
+      
+      PVector position = tracker.getPos();
+      for (int i = 0; i < xPixels; i++) {
+        for (int j = 0; j < yPixels; j++) {
+          pixelArray[i][j].explode(force, position);
+        }
       }
     }
   }  
+  
+
+
 }
 
 void keyPressed() {
@@ -119,13 +128,13 @@ void keyPressed() {
   if (debugMode){
     if (key == CODED) {
       if (keyCode == UP) {
-        baseForce += 2;
-        force += 2;
+        baseForce += 1;
+        force += 1;
         println("force: "+force);
       } 
       else if (keyCode == DOWN) {
-        baseForce -= 2;
-        force -= 2;
+        baseForce -= 1;
+        force -= 1;
         println("force: "+force);
       }
     }

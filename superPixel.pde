@@ -8,6 +8,7 @@ class superPixel {
   color fillColor;
   float xSize, ySize;
   float topspeed;
+  int timer = 0;
 
   //construct the superPixels!!
   superPixel(float x_, float y_, color fill_, float xSize_, float ySize_) {
@@ -24,18 +25,18 @@ class superPixel {
     fillColor = fill_;
     xSize = xSize_;
     ySize = ySize_;
-    topspeed = 9;
-    
+    topspeed = 15;
   }
 
   //our main function, triggering subroutines
   void run() {
+    timer -= 1;
     gravity();
     checkEdges();
     update();
     display();
     //if the pixel isn't moving, there is no reason to ask it to move home/bounce off the wall/etc.
-    if (velocity.mag() != 0) {
+    if (velocity.mag() != 0 && timer < 1) {
       returnHome();
     }
   }
@@ -86,7 +87,7 @@ class superPixel {
     //the distance test here seems to control the wobble
     
     //if the superPixel is slow and close to it's origin, reset it
-    if (distance < .35 && speed < 4) {
+    if (distance < .5 && speed < 8) {
       location = origin.get();
       velocity.mult(0);
       acceleration.mult(0);
@@ -94,7 +95,7 @@ class superPixel {
     //otherwise, move towards home with a random acceleration 
     else {
       seek.normalize();
-      seek.mult(random(.2, .4));
+      seek.mult(random(.3, .5));
       acceleration.add(seek);
     }
   }
@@ -102,6 +103,7 @@ class superPixel {
   //shoot out away from a location
   void explode(float force, PVector mouse) {
     
+    timer = 80;
     //make a new vector, starting at the mouse
     PVector gunpowder = mouse.get();
     
@@ -111,10 +113,13 @@ class superPixel {
     //check the distance between the two
     float distance = gunpowder.mag();
     
-    gunpowder.normalize();
+     if (distance < (force * 8)){
+      gunpowder.normalize();
 
-    gunpowder.mult((-1 * force) / (distance));
-    applyForce(gunpowder);
+    
+      gunpowder.mult((-1 * force) / (distance));
+      applyForce(gunpowder);
+     }
   }
 
 
@@ -134,7 +139,7 @@ class superPixel {
   //apply some gravity, if it's turned on
   void gravity() {
     if (gravity) {
-      applyForce(new PVector(0,random(.4, .8)));
+      applyForce(new PVector(0,random(.6,.8)));
     }
   }
   

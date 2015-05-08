@@ -77,7 +77,7 @@ public void draw() {
   
   background(backColor);
   
-  //if we're in correction mode
+    //if we're in correction mode
   if (correctionMode){
     //show us what the depth camera is collecting
     tracker.display();
@@ -89,7 +89,7 @@ public void draw() {
 
   if(!debugMode){
     tracker.track();
-    if (tracker.tracking){
+    if (tracker.tracking()){
       float force = tracker.getForce();
       
         if (gravity){
@@ -125,6 +125,7 @@ public void draw() {
 
 }
 
+//if we hit a key
 public void keyPressed() {
   //if we hit c, toggle between correction mode
   if (key == 'c') {
@@ -169,7 +170,16 @@ public void keyPressed() {
       }
     }
   }
-    
+  
+  //if we hit space, change the gravity!
+  if (key == ' ') {
+    gravity = !gravity;
+    if (!gravity){
+      force = baseForce;
+    }
+    println("gravity: "+gravity);
+  }
+  
   //make it easy to adjust our force while debugging
   if (debugMode &&! correctionMode){
     if (key == CODED) {
@@ -190,6 +200,7 @@ public void stop() {
   super.stop();
 }
 
+  
 class KinectTracker {
   
   // Size of kinect depth image

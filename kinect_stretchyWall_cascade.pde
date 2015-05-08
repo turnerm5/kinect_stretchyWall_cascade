@@ -70,7 +70,7 @@ void draw() {
 
   if(!debugMode){
     tracker.track();
-    if (tracker.tracking()){
+    if (tracker.tracking){
       float force = tracker.getForce();
       
         if (gravity){
@@ -160,7 +160,7 @@ void keyPressed() {
     }
     println("gravity: "+gravity);
   }
-  
+
   //make it easy to adjust our force while debugging
   if (debugMode &&! correctionMode){
     if (key == CODED) {

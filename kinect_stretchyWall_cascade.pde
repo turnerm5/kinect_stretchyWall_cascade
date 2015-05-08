@@ -2,7 +2,10 @@ import org.openkinect.*;
 import org.openkinect.processing.*;
 
 //turns off the Kinect sensing, uses the mouse as input
-Boolean debugMode = false;
+Boolean debugMode = true;
+
+//don't start off in correction mode
+Boolean correctionMode = false;
 
 // Showing how we can farm all the kinect stuff out to a separate class
 KinectTracker tracker;
@@ -31,10 +34,10 @@ void setup() {
   //if we're not in debug mode, initialize the Kinect
   if (!debugMode){
     kinect = new Kinect(this);
-    tracker = new KinectTracker();
   }
 
-  //code this
+  tracker = new KinectTracker();
+
   //initialize each superPixel, with a nice blueish color
   for (int i = 0; i < xPixels; i++) {
     for (int j = 0; j < yPixels; j++) {
@@ -55,23 +58,14 @@ void draw() {
   
   background(backColor);
   
+    //if we're in correction mode
+  if (correctionMode){
+    //show us what the depth camera is collecting
+    tracker.display();
 
-  
-  for (int i = 0; i < xPixels; i++) {
-    for (int j = 0; j < yPixels; j++) {
-      pixelArray[i][j].run();
-    }
-  }
-  
-  if (debugMode){
-    PVector mouse = new PVector(mouseX, mouseY);
-    if (mousePressed && (mouseButton == LEFT)) {
-      for (int i = 0; i < xPixels; i++) {
-        for (int j = 0; j < yPixels; j++) {
-          pixelArray[i][j].explode(force, mouse);
-        }
-      } 
-    }
+    fill(25);
+    text(tracker.getModeName() + " Correction", 10, 20);
+    text("Offset: " + tracker.getOffset(), 10, 35);
   }
 
   if(!debugMode){
@@ -92,23 +86,67 @@ void draw() {
     }
   }  
   
+  if (debugMode){
+    PVector mouse = new PVector(mouseX, mouseY);
+    if (mousePressed && (mouseButton == LEFT)) {
+      for (int i = 0; i < xPixels; i++) {
+        for (int j = 0; j < yPixels; j++) {
+          pixelArray[i][j].explode(force, mouse);
+        }
+      } 
+    }
+  }
+
+  for (int i = 0; i < xPixels; i++) {
+    for (int j = 0; j < yPixels; j++) {
+      pixelArray[i][j].run();
+    }
+  }
 
 
 }
 
+//if we hit a key
 void keyPressed() {
+  //if we hit c, toggle between correction mode
+  if (key == 'c') {
+    int n = tracker.getCurrentMode();
+    n += 1;
+    tracker.setCurrentMode(n);
+    if (n <= 3){
+      correctionMode = true;
+    }
+    if (n > 3) {
+      tracker.setCurrentMode(-1);
+      correctionMode = false;
+    }
   
+  }
+
+  if (correctionMode){
+    if (key == CODED) {
+      if (keyCode == UP || keyCode == RIGHT) {
+        tracker.setOffset(1);
+      } 
+      else if (keyCode == DOWN || keyCode == LEFT) {
+        tracker.setOffset(-1);
+      }
+    }
+  }
+
+
+  //make it easy to adjust our threshold
   if (!debugMode){
-    
-    //make it easy to adjust our threshold
     int t = tracker.getThreshold();
     if (key == CODED) {
       if (keyCode == UP) {
-        t+=5;
+        t+=1;
+        println("Threshold: "+t);
         tracker.setThreshold(t);
       } 
       else if (keyCode == DOWN) {
-        t-=5;
+        t-=1;
+        println("Threshold: "+ t);
         tracker.setThreshold(t);
       }
     }
@@ -122,22 +160,25 @@ void keyPressed() {
     }
     println("gravity: "+gravity);
   }
-
-   
+  
   //make it easy to adjust our force while debugging
-  if (debugMode){
+  if (debugMode &&! correctionMode){
     if (key == CODED) {
       if (keyCode == UP) {
-        baseForce += 1;
-        force += 1;
+        force += 50;
         println("force: "+force);
       } 
       else if (keyCode == DOWN) {
-        baseForce -= 1;
-        force -= 1;
+        force -= 50;
         println("force: "+force);
       }
     }
   }
-
 }
+
+void stop() {
+  tracker.quit();
+  super.stop();
+}
+
+  

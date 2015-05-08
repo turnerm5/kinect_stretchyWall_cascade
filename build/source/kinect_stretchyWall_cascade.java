@@ -23,6 +23,9 @@ public class kinect_stretchyWall_cascade extends PApplet {
 //turns off the Kinect sensing, uses the mouse as input
 Boolean debugMode = true;
 
+//don't start off in correction mode
+Boolean correctionMode = false;
+
 // Showing how we can farm all the kinect stuff out to a separate class
 KinectTracker tracker;
 // Kinect Library object
@@ -34,7 +37,7 @@ int yPixels = 76;
 
 float xSize, ySize, x, y;
 int pixelFill;
-int backColor = 0xffCCEAE3;
+int backColor = 0xff9933FF;
 boolean gravity = false;
 
 float baseForce = 10;
@@ -47,7 +50,13 @@ public void setup() {
   size(1000, 760);
   noStroke();
 
-  //code this
+  //if we're not in debug mode, initialize the Kinect
+  if (!debugMode){
+    kinect = new Kinect(this);
+  }
+
+  tracker = new KinectTracker();
+
   //initialize each superPixel, with a nice blueish color
   for (int i = 0; i < xPixels; i++) {
     for (int j = 0; j < yPixels; j++) {
@@ -68,19 +77,36 @@ public void draw() {
   
   background(backColor);
   
-  if (gravity){
-    force = baseForce * 5;
+  //if we're in correction mode
+  if (correctionMode){
+    //show us what the depth camera is collecting
+    tracker.display();
+
+    fill(25);
+    text(tracker.getModeName() + " Correction", 10, 20);
+    text("Offset: " + tracker.getOffset(), 10, 35);
   }
 
-  for (int i = 0; i < xPixels; i++) {
-    for (int j = 0; j < yPixels; j++) {
-      pixelArray[i][j].run();
+  if(!debugMode){
+    tracker.track();
+    if (tracker.tracking){
+      float force = tracker.getForce();
+      
+        if (gravity){
+          force = baseForce * 5;
+        }
+      
+      PVector position = tracker.getPos();
+      for (int i = 0; i < xPixels; i++) {
+        for (int j = 0; j < yPixels; j++) {
+          pixelArray[i][j].explode(force, position);
+        }
+      }
     }
-  }
-
+  }  
+  
   if (debugMode){
     PVector mouse = new PVector(mouseX, mouseY);
-
     if (mousePressed && (mouseButton == LEFT)) {
       for (int i = 0; i < xPixels; i++) {
         for (int j = 0; j < yPixels; j++) {
@@ -90,107 +116,147 @@ public void draw() {
     }
   }
 
-  if(!debugMode){
-    tracker.track();
-    float force = tracker.getForce();
-    PVector position = tracker.getPos();
-
-    for (int i = 0; i < xPixels; i++) {
-      for (int j = 0; j < yPixels; j++) {
-        pixelArray[i][j].explode(force, position);
-      }
+  for (int i = 0; i < xPixels; i++) {
+    for (int j = 0; j < yPixels; j++) {
+      pixelArray[i][j].run();
     }
-  }  
+  }
+
+
 }
 
 public void keyPressed() {
+  //if we hit c, toggle between correction mode
+  if (key == 'c') {
+    int n = tracker.getCurrentMode();
+    n += 1;
+    tracker.setCurrentMode(n);
+    if (n <= 3){
+      correctionMode = true;
+    }
+    if (n > 3) {
+      tracker.setCurrentMode(-1);
+      correctionMode = false;
+    }
   
+  }
+
+  if (correctionMode){
+    if (key == CODED) {
+      if (keyCode == UP || keyCode == RIGHT) {
+        tracker.setOffset(1);
+      } 
+      else if (keyCode == DOWN || keyCode == LEFT) {
+        tracker.setOffset(-1);
+      }
+    }
+  }
+
+
+  //make it easy to adjust our threshold
   if (!debugMode){
-    
-    //make it easy to adjust our threshold
     int t = tracker.getThreshold();
     if (key == CODED) {
       if (keyCode == UP) {
-        t+=5;
+        t+=1;
+        println("Threshold: "+t);
         tracker.setThreshold(t);
       } 
       else if (keyCode == DOWN) {
-        t-=5;
+        t-=1;
+        println("Threshold: "+ t);
         tracker.setThreshold(t);
       }
     }
   }
-  
-  //if we hit space, change the gravity!
-  if (key == ' ') {
-    gravity = !gravity;
-    if (!gravity){
-      force = baseForce;
-    }
-    println("gravity: "+gravity);
-  }
-
-   
+    
   //make it easy to adjust our force while debugging
-  if (debugMode){
+  if (debugMode &&! correctionMode){
     if (key == CODED) {
       if (keyCode == UP) {
-        baseForce += 1;
-        force += 1;
+        force += 50;
         println("force: "+force);
       } 
       else if (keyCode == DOWN) {
-        baseForce -= 1;
-        force -= 1;
+        force -= 50;
         println("force: "+force);
       }
     }
   }
-
 }
-//Thanks to Daniel Shiffman!
+
+public void stop() {
+  tracker.quit();
+  super.stop();
+}
 
 class KinectTracker {
-
-  // Size of kinect image
+  
+  // Size of kinect depth image
   int kw = 640;
   int kh = 480;
-  int threshold = 635;
+  
+  //depth threshold
+  int threshold = 765;
+  
+  //how hard is someone pushing into the screen?
+  float force;
+  
+  //Are we tracking something?
+  boolean tracking;
 
-  // Raw location
+  // location of tracked point
   PVector loc;
-
-  // Interpolated location
-  PVector lerpedLoc;
-
-  Boolean tracking = false;
 
   // Depth data
   int[] depth;
+  
+  //how much does the kinect tilt?
+  float deg = 0;
 
-  float force;
+  // how far past the trigger threshold can someone push in?
+  int distancePastThreshold = 70;
 
+  //a layer to nicely display our depth data
   PImage display;
 
+  //misalignment correction settings
+  int currentMode; //-1 = no correction
+  int[] offset = {0,0,0,0};
+  String[] mode = {"Top", "Bottom", "Left", "Right"};
+
+
+  //Construct!
+
   KinectTracker() {
-    kinect.start();
-    kinect.enableDepth(true);
-    float deg = 0;
-    kinect.tilt(deg);
-
-    // We could skip processing the grayscale image for efficiency
-    // but this example is just demonstrating everything
-    kinect.processDepthImage(false);
-
-    display = createImage(kw,kh,PConstants.RGB);
-
+    
+    if (!debugMode){
+      kinect.start();
+      kinect.enableDepth(true);
+      kinect.tilt(deg);
+      kinect.processDepthImage(false);
+    }
+    
+    display = createImage(width,height,PConstants.RGB);
     loc = new PVector(0,0);
-    lerpedLoc = new PVector(0,0);
+
+    //our screen correction variables
+    correctionMode = false;
+    currentMode = -1;
+
   }
 
-  public void track() {
 
-    tracking = false;
+  //primary functions
+
+  public void track() {
+    //Main tracking function.
+    //Finds closest point past a threshold
+    //Returns nothing.
+    
+    //track where we found the deepest value
+    int deepX = 0;
+    int deepY = 0;
 
     // Get the raw depth as array of integers
     depth = kinect.getRawDepth();
@@ -198,106 +264,168 @@ class KinectTracker {
     // Being overly cautious here
     if (depth == null) return;
 
-    float sumX = 0;
-    float sumY = 0;
-    float count = 0;
+    //reset our closest depth
+    int depthMax = 99999;
+    
+    //default to false, unless we're tracking something
+    tracking = false;    
 
+    //for every value in the Kinect depth array.
     for(int x = 0; x < kw; x++) {
       for(int y = 0; y < kh; y++) {
-        // Mirroring the image
-        int offset = kw-x-1+y*kw;
-        // Grabbing the raw depth
-        int rawDepth = depth[offset];
-
-        // Testing against threshold
+        
+        // Mirror the image
+        int pixelOffset = kw-x-1+y*kw;
+        
+        // Grab the raw depth value
+        int rawDepth = depth[pixelOffset];
+        
+        // Test against threshold
         if (rawDepth < threshold) {
+          //if we found something, we're tracking!
           tracking = true;
-          sumX += x;
-          sumY += y;
-          count++;
-          force += (rawDepth - threshold);
+          
+          //if it's the closest value, remember it, and its coordinates
+          if (rawDepth < depthMax) {
+            depthMax = rawDepth;
+            deepY = y;
+            deepX = x;
+          }
         }
       }
     }
-    // As long as we found something
-    if (count != 0) {
-      loc = new PVector(sumX/count,sumY/count);
-      force = force / count;
-      loc.x = map(loc.x,0,kw,0,width);
-      loc.y = map(loc.y,0,kh,0,height);
+
+    // If we found something...
+    if (tracking) {
+      
+      //correct the location point for the misalignment of the kinect and proj.
+      //should we be correcting the whole image, not just the point?
+      //this will only work for one point.
+      int correctedY = (int)map(deepY, offset[0], offset[1], 0, height);
+      int correctedX = (int)map(deepX, offset[2], offset[3], 0, width);
+      
+      //save the location, corrected to the screen
+      loc = new PVector(correctedX,correctedY);    
+    }
+  }
+
+  public void display() {
+    
+    // Being overly cautious here
+    if (!debugMode){
+      if (depth == null) return;
     }
 
-    // Interpolating the location, doing it arbitrarily for now
-    lerpedLoc.x = PApplet.lerp(lerpedLoc.x, loc.x, 0.9f);
-    lerpedLoc.y = PApplet.lerp(lerpedLoc.y, loc.y, 0.9f);
+    //Load all of the displayed pixels
+    display.loadPixels();
+    
+    for(int x = 0; x < display.width; x++) {
+      for(int y = 0; y < display.height; y++) {
+        
+        //Running through all of the pixels on the big screen and getting 
+        //their corresponding locations in the depth array
+        int mappedX = (int)map(x,0,display.width,0,kw);
+        int mappedY = (int)map(y,0,display.height,0,kh);
+
+        // mirroring image
+        int offset = kw-mappedX-1+mappedY*kw;
+        
+        if (!debugMode){
+          // Raw depth
+          int rawDepth = depth[offset];
+
+          //What is the index of the pixel array?
+          int pix = x + y * display.width;
+
+          if (rawDepth < threshold) {
+
+            int redValue = (int)map(rawDepth, threshold, threshold - distancePastThreshold, 0, 255);
+            int greenValue = 0;
+            int blueValue = (int)map(rawDepth, threshold, threshold - distancePastThreshold, 255, 0);
+
+
+            display.pixels[pix] = color(redValue,greenValue,blueValue);
+
+          } else {
+            //A dark gray
+            display.pixels[pix] = color(100);
+          }
+        }
+
+        if (debugMode) {
+          //What is the index of the pixel array?
+          int pix = x + y * display.width;
+          display.pixels[pix] = color(100);
+        }
+      }
+    }
+    
+    //Always update the pixels at the end
+    display.updatePixels();
+
+    // Draw the image
+    image(display,0,0);
   }
 
-  public PVector getLerpedPos() {
-    return lerpedLoc;
+
+  //remaps the force, so when you push in more, the force returned is greater
+  public float getForce(){
+    
+    //what is the range of forces that are allowed?
+    int minForce = 200;
+    int maxForce = 600;
+    
+    //remap
+    force = constrain(
+      map(
+        force, 
+        0, distancePastThreshold, 
+        minForce, maxForce
+      ),
+      minForce,maxForce
+    );
+    
+    return force;
   }
+
+
+  //utility functions
 
   public PVector getPos() {
     return loc;
   }
 
-  public float getForce(){
-    
-    //we need to determine what the second number should be.
-    int minForce = 0;
-    int maxForce = 40;
-    int distancePastThreshold = 100;
-
-    force = constrain(map(force, 0, distancePastThreshold, minForce, maxForce),minForce,maxForce);
-    return force;
-  }
-
-
-  //need to enable
-  public void display() {
-    
-    PImage img = kinect.getDepthImage();
-
-    // Being overly cautious here
-    if (depth == null || img == null) return;
-
-    // Going to rewrite the depth image to show which pixels are in threshold
-    // A lot of this is redundant, but this is just for demonstration purposes
-    display.loadPixels();
-    for(int x = 0; x < kw; x++) {
-      for(int y = 0; y < kh; y++) {
-        // mirroring image
-        int offset = kw-x-1+y*kw;
-        // Raw depth
-        int rawDepth = depth[offset];
-
-        int pix = x+y*display.width;
-        if (rawDepth < threshold) {
-          // A red color instead
-          display.pixels[pix] = color(150,50,50);
-        } 
-        else {
-          display.pixels[pix] = img.pixels[offset];
-        }
-      }
-    }
-
-    display.updatePixels();
-
-    // Draw the image
-    image(display,0,0);
-
-  }
-
-  public void quit() {
-    kinect.quit();
-  }
 
   public int getThreshold() {
     return threshold;
   }
 
   public void setThreshold(int t) {
-    threshold =  t;
+    threshold = t;
+  }
+
+  public int getCurrentMode(){
+    return currentMode;
+  }
+
+  public void setCurrentMode(int m){
+    currentMode = m;
+  }
+
+  public String getModeName(){
+    return mode[currentMode];
+  }
+
+  public int getOffset(){
+    return offset[currentMode];
+  }
+
+  public void setOffset(int offsetChange){
+    offset[currentMode] += offsetChange;
+  }
+
+  public void quit() {
+    kinect.quit();
   }
 }
 //the superPixels are the actual cubes that fly around.
@@ -327,7 +455,7 @@ class superPixel {
     fillColor = fill_;
     xSize = xSize_;
     ySize = ySize_;
-    topspeed = 9;
+    topspeed = 15;
   }
 
   //our main function, triggering subroutines
@@ -397,13 +525,15 @@ class superPixel {
     //otherwise, move towards home with a random acceleration 
     else {
       seek.normalize();
-      seek.mult(random(0, .1f));
+      seek.mult(random(.3f, .5f));
       acceleration.add(seek);
     }
   }
 
   //shoot out away from a location
   public void explode(float force, PVector mouse) {
+    
+    timer = 80;
     //make a new vector, starting at the mouse
     PVector gunpowder = mouse.get();
     
@@ -413,13 +543,13 @@ class superPixel {
     //check the distance between the two
     float distance = gunpowder.mag();
     
-    // if (distance < (force * 8)){
+     if (distance < (force * 8)){
       gunpowder.normalize();
-      timer = 80;
+
     
       gunpowder.mult((-1 * force) / (distance));
       applyForce(gunpowder);
-    // }
+     }
   }
 
 

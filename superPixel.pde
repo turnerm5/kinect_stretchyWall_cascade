@@ -116,13 +116,13 @@ class superPixel {
     //check the distance between the two
     float distance = gunpowder.mag();
     
-     if (distance < (force * 7)){
-      timer = 80;
+     // if (distance < (force * 7)){
+      timer = 20;
       gunpowder.normalize();
     
       gunpowder.mult((-1 * force) / (distance));
       applyForce(gunpowder);
-     }
+     // }
   }
 
 

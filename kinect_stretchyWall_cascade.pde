@@ -2,7 +2,7 @@ import org.openkinect.*;
 import org.openkinect.processing.*;
 
 //turns off the Kinect sensing, uses the mouse as input
-Boolean debugMode = false;
+Boolean debugMode = true;
 
 //don't start off in correction mode
 Boolean correctionMode = false;
@@ -22,6 +22,7 @@ color backColor = #9933FF;
 boolean gravity = false;
 
 float force;
+float baseForce = 10;
 
 
 superPixel[][] pixelArray = new superPixel[xPixels][yPixels];
@@ -74,7 +75,7 @@ void draw() {
     tracker.track();
 
     //looks fucking awesome, but CPU intensive
-    tracker.display();
+    //tracker.display();
     
     if (tracker.tracking){
       float force = tracker.getForce();
@@ -97,8 +98,10 @@ void draw() {
   if (debugMode){
     PVector mouse = new PVector(mouseX, mouseY);
     
+    force = baseForce;
+
     if (gravity){
-      force = force * 5;
+      force = baseForce * 5;
     }
 
     if (mousePressed && (mouseButton == LEFT)) {
@@ -178,12 +181,12 @@ void keyPressed() {
   if (debugMode &&! correctionMode){
     if (key == CODED) {
       if (keyCode == UP) {
-        force += 50;
-        println("force: "+force);
+        baseForce += 1;
+        println("baseForce: "+baseForce);
       } 
       else if (keyCode == DOWN) {
-        force -= 50;
-        println("force: "+force);
+        baseForce -= 1;
+        println("baseForce: "+baseForce);
       }
     }
   }

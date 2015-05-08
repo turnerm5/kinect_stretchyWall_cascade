@@ -192,7 +192,7 @@ class KinectTracker {
     
     //what is the range of forces that are allowed?
     int minForce = 1;
-    int maxForce = 10;
+    int maxForce = 15;
     
     //remap
     force =

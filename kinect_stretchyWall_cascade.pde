@@ -72,6 +72,9 @@ void draw() {
   if(!debugMode){
     
     tracker.track();
+
+    //looks fucking awesome, but CPU intensive
+    tracker.display();
     
     if (tracker.tracking){
       float force = tracker.getForce();

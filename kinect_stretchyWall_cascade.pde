@@ -2,7 +2,7 @@ import org.openkinect.*;
 import org.openkinect.processing.*;
 
 //turns off the Kinect sensing, uses the mouse as input
-Boolean debugMode = true;
+Boolean debugMode = false;
 
 //don't start off in correction mode
 Boolean correctionMode = false;
@@ -21,8 +21,8 @@ color pixelFill;
 color backColor = #9933FF;
 boolean gravity = false;
 
-float baseForce = 10;
-float force = baseForce;
+float force;
+
 
 superPixel[][] pixelArray = new superPixel[xPixels][yPixels];
 
@@ -30,6 +30,7 @@ void setup() {
   //a little small, so we don't get artifacts
   size(1000, 760);
   noStroke();
+
 
   //if we're not in debug mode, initialize the Kinect
   if (!debugMode){
@@ -61,7 +62,7 @@ void draw() {
     //if we're in correction mode
   if (correctionMode){
     //show us what the depth camera is collecting
-    tracker.display();
+    //tracker.display();
 
     fill(25);
     text(tracker.getModeName() + " Correction", 10, 20);
@@ -69,25 +70,34 @@ void draw() {
   }
 
   if(!debugMode){
+    
     tracker.track();
+    
     if (tracker.tracking){
       float force = tracker.getForce();
       
         if (gravity){
-          force = baseForce * 5;
+          force = force * 5;
         }
       
       PVector position = tracker.getPos();
+      
       for (int i = 0; i < xPixels; i++) {
         for (int j = 0; j < yPixels; j++) {
           pixelArray[i][j].explode(force, position);
         }
       }
     }
+
   }  
   
   if (debugMode){
     PVector mouse = new PVector(mouseX, mouseY);
+    
+    if (gravity){
+      force = force * 5;
+    }
+
     if (mousePressed && (mouseButton == LEFT)) {
       for (int i = 0; i < xPixels; i++) {
         for (int j = 0; j < yPixels; j++) {
@@ -136,7 +146,7 @@ void keyPressed() {
 
 
   //make it easy to adjust our threshold
-  if (!debugMode){
+  if (!debugMode &&! correctionMode){
     int t = tracker.getThreshold();
     if (key == CODED) {
       if (keyCode == UP) {
@@ -156,7 +166,7 @@ void keyPressed() {
   if (key == ' ') {
     gravity = !gravity;
     if (!gravity){
-      force = baseForce;
+      force = tracker.getForce();
     }
     println("gravity: "+gravity);
   }

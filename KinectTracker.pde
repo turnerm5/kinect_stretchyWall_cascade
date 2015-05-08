@@ -5,22 +5,22 @@ class KinectTracker {
   int kh = 480;
   
   //depth threshold
-  int threshold = 765;
+  int threshold = 790;
   
   //how hard is someone pushing into the screen?
   float force;
   
   //Are we tracking something?
-  boolean tracking;
+  boolean tracking = false;
 
   // location of tracked point
-  PVector loc;
+  PVector[] locArray = new PVector[4];
 
   // Depth data
   int[] depth;
   
   //how much does the kinect tilt?
-  float deg = 0;
+  float deg = 20;
 
   // how far past the trigger threshold can someone push in?
   int distancePastThreshold = 70;
@@ -30,7 +30,7 @@ class KinectTracker {
 
   //misalignment correction settings
   int currentMode; //-1 = no correction
-  int[] offset = {0,0,0,0};
+  int[] offset = {0,kh,0,kw};
   String[] mode = {"Top", "Bottom", "Left", "Right"};
 
 
@@ -46,7 +46,10 @@ class KinectTracker {
     }
     
     display = createImage(width,height,PConstants.RGB);
-    loc = new PVector(0,0);
+
+    for (int i = locArray.length - 1; i >= 0; i--){
+      locArray[i] = new PVector(0,0);
+    }
 
     //our screen correction variables
     correctionMode = false;
@@ -91,7 +94,9 @@ class KinectTracker {
         // Test against threshold
         if (rawDepth < threshold) {
           //if we found something, we're tracking!
-          tracking = true;
+          if (frameCount > 30){
+            tracking = true;
+          }
           
           //if it's the closest value, remember it, and its coordinates
           if (rawDepth < depthMax) {
@@ -103,6 +108,8 @@ class KinectTracker {
       }
     }
 
+    force = threshold - depthMax;
+
     // If we found something...
     if (tracking) {
       
@@ -112,8 +119,12 @@ class KinectTracker {
       int correctedY = (int)map(deepY, offset[0], offset[1], 0, height);
       int correctedX = (int)map(deepX, offset[2], offset[3], 0, width);
       
+      
+      for (int i = locArray.length - 1; i > 0; i--){
+        locArray[i] = locArray[i-1];
+      }
       //save the location, corrected to the screen
-      loc = new PVector(correctedX,correctedY);    
+      locArray[0] = new PVector(correctedX,correctedY);
     }
   }
 
@@ -180,18 +191,16 @@ class KinectTracker {
   float getForce(){
     
     //what is the range of forces that are allowed?
-    int minForce = 200;
-    int maxForce = 600;
+    int minForce = 1;
+    int maxForce = 10;
     
     //remap
-    force = constrain(
+    force =
       map(
         force, 
         0, distancePastThreshold, 
         minForce, maxForce
-      ),
-      minForce,maxForce
-    );
+      );
     
     return force;
   }
@@ -200,6 +209,20 @@ class KinectTracker {
   //utility functions
 
   PVector getPos() {
+    
+  
+    int avgX = 0;
+    int avgY = 0;
+
+    for (int i=0; i < locArray.length; i++){
+      avgX += locArray[i].x;
+      avgY += locArray[i].y;
+    }
+
+    avgX = avgX / locArray.length;
+    avgY = avgY / locArray.length;
+
+    PVector loc = new PVector(avgX, avgY);
     return loc;
   }
 

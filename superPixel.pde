@@ -36,7 +36,7 @@ class superPixel {
     update();
     display();
     //if the pixel isn't moving, there is no reason to ask it to move home/bounce off the wall/etc.
-    if (velocity.mag() != 0 && timer < 1) {
+    if (velocity.mag() != 0 && timer < 1 &&! gravity) {
       returnHome();
     }
   }
@@ -63,12 +63,15 @@ class superPixel {
       velocity.y *= -.9;
     } 
     else if (location.y > height - 2) {
-      location.y = height - 2;
       if (gravity){
-        velocity.y *= random(-2,-4);
+        float f = randomGaussian();
+        f = -2 * abs(f) - 1;
+        velocity.y *= f;
+        velocity.x *= 10 * randomGaussian();
       } else {
         velocity.y *= -.9;
       }
+      location.y = height - 10;
     }
   }
   
@@ -103,7 +106,7 @@ class superPixel {
   //shoot out away from a location
   void explode(float force, PVector mouse) {
     
-    timer = 80;
+
     //make a new vector, starting at the mouse
     PVector gunpowder = mouse.get();
     
@@ -113,9 +116,9 @@ class superPixel {
     //check the distance between the two
     float distance = gunpowder.mag();
     
-     if (distance < (force * 8)){
+     if (distance < (force * 7)){
+      timer = 80;
       gunpowder.normalize();
-
     
       gunpowder.mult((-1 * force) / (distance));
       applyForce(gunpowder);

@@ -98,7 +98,7 @@ class superPixel {
     //otherwise, move towards home with a random acceleration 
     else {
       seek.normalize();
-      seek.mult(random(.3, .5));
+      seek.mult(random(.2, .4));
       acceleration.add(seek);
     }
   }
@@ -117,7 +117,7 @@ class superPixel {
     float distance = gunpowder.mag();
     
      // if (distance < (force * 7)){
-      timer = 20;
+      timer = 2;
       gunpowder.normalize();
     
       gunpowder.mult((-1 * force) / (distance));

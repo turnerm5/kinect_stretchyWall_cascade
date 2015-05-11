@@ -22,7 +22,7 @@ color backColor = #9933FF;
 boolean gravity = false;
 
 float force;
-float baseForce = 10;
+float baseForce = 2;
 
 
 superPixel[][] pixelArray = new superPixel[xPixels][yPixels];
@@ -101,7 +101,7 @@ void draw() {
     force = baseForce;
 
     if (gravity){
-      force = baseForce * 5;
+      force = baseForce * 20;
     }
 
     if (mousePressed && (mouseButton == LEFT)) {
